@@ -1,0 +1,5 @@
+Source: footswitch
+Section: utils
+Priority: optional
+Maintainer: Radoslav Gerganov <rgerganov@gmail.com>
+Build-Depends:
