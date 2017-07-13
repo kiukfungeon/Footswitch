@@ -3,3 +3,6 @@ Section: utils
 Priority: optional
 Maintainer: Radoslav Gerganov <rgerganov@gmail.com>
 Build-Depends:
+  cmake,
+  libhidapi-dev,
+  pkg-config
