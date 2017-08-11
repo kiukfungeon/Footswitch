@@ -80,3 +80,44 @@ Usage
        -a key      - append the specified key
        -k key      - write the specified key
        -m modifier - ctrl|shift|alt|win
+       -b button   - mouse_left|mouse_middle|mouse_right
+       -x X        - move the mouse cursor horizontally by X pixels
+       -y Y        - move the mouse cursor vertically by Y pixels
+       -w W        - move the mouse wheel by W
+
+    You cannot mix -sSa options with -kmbxyw options for one and the same pedal
+_
+
+    scythe [-123] [-r] [-a <key>] [-m <modifier>] [-b <button>]
+       -r          - read all pedals
+       -1          - program the first pedal
+       -2          - program the second pedal (default)
+       -3          - program the third pedal
+       -a key      - append the specified key
+       -m modifier - ctrl|shift|alt|win
+       -b button   - mouse_left|mouse_double|mouse_right
+
+    You cannot mix -a and -m options with -b option for one and the same pedal
+
+Examples for PCsensor
+--------
+    footswitch -r
+        read the persisted function in each pedal and print it on the console
+    footswitch -k a
+        program the second pedal to print the letter 'a' (also work for single pedal devices);
+        as a general rule you don't need to specify -1, -2 or -3 if you have only one pedal
+    footswitch -1 -k a -2 -k b -3 -k c
+        program the first pedal to print 'a', second pedal to print 'b' and third pedal to print 'c'
+    footswitch -1 -k esc -2 -k enter
+        program the first pedal as Escape key and the second pedal as Enter key
+    footswitch -1 -m ctrl -k a -3 -m alt -k f4
+        program the first pedal as Ctrl+a and the third pedal as Alt+F4
+    footswitch -1 -m ctrl -k a -3 -m shift -m alt -k s
+        program the first pedal as Ctrl+a and the third pedal as Shift+Alt+s (Wikipedia "save")
+    footswitch -m ctrl -b mouse_middle
+        program the second pedal as Ctrl+<middle_mouse_click>
+    footswitch -s 'hello world'
+        program the second pedal to print 'hello world'
+    footswitch -s 'hello' -s ' ' -s 'world'
+        this will also program the second pedal to print 'hello world';
+        you can specify multiple -s options and each option will append to the resulting string

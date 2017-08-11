@@ -99,3 +99,104 @@ void SetUpdateEx(uint8_t *data, int len)
     checksum(data, len);
     send_report(data, len);
 }
+
+// BXKBSettingLib.dll + 0x1540
+void UpdateSetting(uint8_t *data, int len)
+{
+    uint8_t buff[0x48] = {0};
+    buff[3] = 0x2c;         // local_45
+    buff[6] = 0x02;         // local_42
+    SetUpdateEx(buff, 0x48);
+    for (int offset = 0; offset < len; offset += 0x20) {
+        int count = len - offset;
+        if (count > 0x20) {
+            count = 0x20;
+        }
+        buff[3] = 0x26;             // local_45
+        buff[4] = offset >> 8;       // local_44
+        buff[5] = offset;            // local_43
+        buff[6] = count;            // local_42
+        for (int i = 0; i < count; i++) {
+            buff[8+i] = data[offset+i];
+        }
+        SetUpdateEx(buff, 0x48);
+        SetUpdateEx(buff, 0x48);
+    }
+    buff[3] = 0x2b;             // local_45
+    buff[4] = 0x14;             // local_44
+    buff[5] = 0x23;             // local_43
+    buff[6] = 0x00;             // local_42
+    SetUpdateEx(buff, 0x48);
+}
+
+static bool set_pedal_type(enum event_type new_type)
+{
+    if (pedals[curr_pedal].type == NONE) {
+        pedals[curr_pedal].type = new_type;
+        return true;
+    }
+    return false;
+}
+
+void compile_string(const char *str)
+{
+    if (!set_pedal_type(MULTIPLE_KEYS)) {
+        fprintf(stderr, "Invalid combination of options\n");
+        usage();
+    }
+    int len = strlen(str);
+    if (len > MAX_KEYS) {
+        fprintf(stderr, "The string length exceeds %d\n", MAX_KEYS);
+        exit(1);
+    }
+    pedals[curr_pedal].count = len;
+    for (int i = 0; i < strlen(str); i++) {
+        pedals[curr_pedal].keys[i].mod = 0xf0;
+        uint8_t code = 0;
+        encode_char(str[i], &code);
+        pedals[curr_pedal].keys[i].code = code;
+    }
+}
+
+void compile_key_norepeat(const char *key)
+{
+    if (!set_pedal_type(SINGLE_KEY_NOREPEAT)) {
+        fprintf(stderr, "Invalid combination of options\n");
+        usage();
+    }
+    uint8_t code = 0;
+    if (!encode_key(key, &code)) {
+        fprintf(stderr, "Cannot encode key '%s'\n", key);
+        exit(1);
+    }
+    pedals[curr_pedal].count = 1;
+    pedals[curr_pedal].keys[0].mod |= 0xf0;
+    pedals[curr_pedal].keys[0].code = code;
+}
+
+void compile_key_repeat(const char *key)
+{
+    if (!set_pedal_type(SINGLE_KEY_REPEAT)) {
+        fprintf(stderr, "Invalid combination of options\n");
+        usage();
+    }
+    uint8_t code = 0;
+    if (!encode_key(key, &code)) {
+        fprintf(stderr, "Cannot encode key '%s'\n", key);
+        exit(1);
+    }
+    pedals[curr_pedal].count = 1;
+    pedals[curr_pedal].keys[0].mod |= 0xf0;
+    pedals[curr_pedal].keys[0].code = code;
+}
+
+void compile_modifier(const char *mod_str)
+{
+    enum modifier mod;
+
+    if (!parse_modifier(mod_str, &mod)) {
+        fprintf(stderr, "Invalid modifier '%s'\n", mod_str);
+        exit(1);
+    }
+    pedals[curr_pedal].keys[0].mod |= mod;
+}
