@@ -190,3 +190,67 @@ void compile_modifier(const char *mod_str)
     if (pedals[curr_pedal].data_len == 12) {
         fprintf(stderr, "Invalid combination of options\n");
         usage();
+    }
+    if (pedals[curr_pedal].data_len == 0) {
+        memcpy(pedals[curr_pedal].data, KEY_DATA, 13);
+        pedals[curr_pedal].data_len = 13;
+    }
+    pedals[curr_pedal].data[1] = curr_pedal + 1;
+
+    if (!parse_modifier(mod_str, &mod)) {
+        fprintf(stderr, "Invlalid modifier '%s'\n", mod_str);
+        exit(1);
+    }
+
+    pedals[curr_pedal].data[4] |= mod;
+}
+
+void compile_mouse_button(const char *btn_str)
+{
+    enum mouse_button btn;
+
+    if (!parse_mouse_button(btn_str, &btn)) {
+        fprintf(stderr, "Invalid mouse button '%s'\n", btn_str);
+        exit(1);
+    }
+    if (pedals[curr_pedal].data_len == 13) {
+        fprintf(stderr, "Invalid combination of options\n");
+        usage();
+    }
+    if (pedals[curr_pedal].data_len == 0) {
+        memcpy(pedals[curr_pedal].data, MOUSE_DATA, 12);
+        pedals[curr_pedal].data_len = 12;
+    }
+    pedals[curr_pedal].data[1] = curr_pedal + 1;
+    switch (btn) {
+        case MOUSE_LEFT:
+            pedals[curr_pedal].data[4] = 0x81;
+            break;
+        case MOUSE_RIGHT:
+            pedals[curr_pedal].data[4] = 0x82;
+            break;
+        case MOUSE_MIDDLE:
+            pedals[curr_pedal].data[4] = 0x84;
+            break;
+        case MOUSE_DOUBLE:
+            pedals[curr_pedal].data[4] = 0x80;
+            break;
+    }
+}
+
+void send_report(unsigned char *ptr, int len)
+{
+    int r;
+    //debug_arr(ptr, len);
+    r = hid_send_feature_report(dev, ptr, len);
+    if (r < 0) {
+        fprintf(stderr, "Error sending feature report\n");
+    }
+    usleep(200 * 1000);
+}
+
+void write_pedals() {
+    int i = 0;
+    unsigned char nop[8] = {0x06, 0x00, 0x00, 0xff, 0x00, 0x00, 0x00, 0x00};
+    unsigned char end[8] = {0x06, 0xaa, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00};
+

@@ -200,3 +200,104 @@ void compile_modifier(const char *mod_str)
     }
     pedals[curr_pedal].keys[0].mod |= mod;
 }
+
+void compile_mouse_button(const char *btn_str)
+{
+    enum mouse_button btn;
+    if (!set_pedal_type(SINGLE_KEY_REPEAT)) {
+        fprintf(stderr, "Invalid combination of options\n");
+        usage();
+    }
+    if (!parse_mouse_button(btn_str, &btn)) {
+        fprintf(stderr, "Invalid mouse button '%s'\n", btn_str);
+        exit(1);
+    }
+    pedals[curr_pedal].count = 1;
+    pedals[curr_pedal].keys[0].mod = 0xc0;
+    pedals[curr_pedal].keys[0].code = btn;
+}
+
+void write_pedals()
+{
+    int data_length = 2;
+    for (int i = 0; i < 6; i++) {
+        // if the user hasn't specified anything, program the pedal with key 'a'
+        if (pedals[i].type == NONE) {
+            pedals[i].type = SINGLE_KEY_REPEAT;
+            pedals[i].count = 1;
+            pedals[i].keys[0].mod = 0xf0;
+            pedals[i].keys[0].code = 4;
+        }
+        data_length += pedals[i].count*2 + 2;
+    }
+    uint8_t *data = malloc(data_length);
+    if (!data) {
+        fprintf(stderr, "Not enough memory\n");
+        exit(1);
+    }
+
+    // <len % 256> <len / 256>
+    // <count> <type> <mod> <code> [<mod> <code>]
+    // <count> <type> <mod> <code> [<mod> <code>]
+    // <count> <type> <mod> <code> [<mod> <code>]
+    // <count> <type> <mod> <code> [<mod> <code>]
+    // <count> <type> <mod> <code> [<mod> <code>]
+    // <count> <type> <mod> <code> [<mod> <code>]
+    //
+    // Note: count>1 only if type==0x30
+    // Note: mod==0xc0 for mouse buttons
+    int ind = 0;
+    data[ind++] = data_length % 256;
+    data[ind++] = data_length / 256;
+    for (int i = 0; i < 6; i++) {
+        data[ind++] = pedals[i].count;
+        data[ind++] = pedals[i].type;
+        for (int j = 0; j < pedals[i].count; j++) {
+            data[ind++] = pedals[i].keys[j].mod;
+            data[ind++] = pedals[i].keys[j].code;
+        }
+    }
+
+    // printf("data_length = %d\n", data_length);
+    // for (int i = 0; i < data_length; i++) {
+    //     printf("%02X ", data[i]);
+    // }
+    // printf("\n");
+
+    uint8_t buff[0x48] = {0};
+    SetUpdateEx(buff, 0x48);
+    UpdateSetting(data, data_length);
+    printf("Done. Unplug the footswitch and then plug it back again.\n");
+    free(data);
+}
+
+static void print_key(int mod, uint8_t code)
+{
+    if (mod == 0xc0) {
+        if (code & MOUSE_LEFT) {
+            printf("mouse left\n");
+        }
+        if (code & MOUSE_RIGHT) {
+            printf("mouse right\n");
+        }
+    } else {
+        if (mod & CTRL) {
+            printf("ctrl+");
+        }
+        if (mod & SHIFT) {
+            printf("shift+");
+        }
+        if (mod & ALT) {
+            printf("alt+");
+        }
+        if (mod & WIN) {
+            printf("win+");
+        }
+        printf("%s\n", decode_byte(code));
+    }
+}
+
+static void print_pedal(int num, const uint8_t *data)
+{
+    int count = data[0];
+    int type = data[1];
