@@ -277,3 +277,143 @@ void read_pedals() {
 }
 
 /**
+ * The following types are valid:
+ *   KEY_TYPE,
+ *   MOUSE_TYPE,
+ *   KEY_TYPE | MOUSE_TYPE,
+ *   STRING_TYPE
+ */
+bool set_pedal_type(unsigned char new_type) {
+    unsigned char *curr_type = &curr_pedal->data[1];
+    // check if there is no type set (default)
+    if (*curr_type == 0) {
+        // set type and data_len
+        *curr_type = new_type;
+        if (new_type == STRING_TYPE) {
+            curr_pedal->data_len = 2;
+        }
+        return true;
+    }
+    // type is already set, check if we can add the new type
+    switch (new_type) {
+        case STRING_TYPE:
+            return *curr_type == STRING_TYPE;
+        case KEY_TYPE:
+        case MOUSE_TYPE:
+            if (*curr_type == STRING_TYPE) {
+                return false;
+            }
+            *curr_type |= new_type;
+            return true;
+    }
+    return false;
+}
+
+void compile_string_data(unsigned char *data, size_t len) {
+    if (curr_pedal->data_len + len > 40) {
+        fprintf(stderr, "The size of the accumulated string must be <= 38\n");
+        exit(1);
+    }
+    memcpy(&curr_pedal->data[curr_pedal->data_len], data, len);
+    curr_pedal->data_len += len;
+    curr_pedal->header[2] = curr_pedal->data_len;
+    curr_pedal->data[0] = curr_pedal->data_len;
+}
+
+void compile_string(const char *str) {
+    size_t len = strlen(str);
+    unsigned char arr[40] = {0};
+
+    if (!set_pedal_type(STRING_TYPE)) {
+        fprintf(stderr, "Invalid combination of options\n");
+        usage();
+    }
+    if (len > 38) {
+        fprintf(stderr, "The size of each string must be <= 38\n");
+        exit(1);
+    }
+    if (!encode_string(str, arr)) {
+        fprintf(stderr, "Cannot encode string: '%s'\n", str);
+        exit(1);
+    }
+    compile_string_data(arr, len);
+}
+
+void compile_string_key(const char *key) {
+    unsigned char b;
+
+    if (!set_pedal_type(STRING_TYPE)) {
+        fprintf(stderr, "Invalid combination of options\n");
+        usage();
+    }
+    if (!encode_key(key, &b)) {
+        fprintf(stderr, "Cannot encode key '%s'\n", key);
+        exit(1);
+    }
+    compile_string_data(&b, 1);
+}
+
+void compile_raw_string(const char *str) {
+    unsigned char arr[40];
+    int ind = 0;
+    char *tok = NULL;
+
+    if (!set_pedal_type(STRING_TYPE)) {
+        fprintf(stderr, "Invalid combination of options\n");
+        usage();
+    }
+    tok = strtok((char *)str, " ,");
+    while (tok != NULL && ind < 38) {
+        int val;
+        if (sscanf(tok, "%x", &val) == 1) {
+            arr[ind++] = val;
+        } else {
+            fprintf(stderr, "'%s' is invalid hex number\n", tok);
+            exit(1);
+        }
+        tok = strtok(NULL, " ,");
+    }
+    if (tok != NULL) {
+        fprintf(stderr, "The size of each string must be <= 38\n");
+        exit(1);
+    }
+    compile_string_data(arr, ind);
+}
+
+void compile_key(const char *key) {
+    unsigned char b = 0;
+
+    if (!set_pedal_type(KEY_TYPE)) {
+        fprintf(stderr, "Invalid combination of options\n");
+        usage();
+    }
+    if (!encode_key(key, &b)) {
+        fprintf(stderr, "Cannot encode key '%s'\n", key);
+        exit(1);
+    }
+    curr_pedal->data[3] = b;
+}
+
+void compile_modifier(const char *mod_str) {
+    enum modifier mod;
+
+    if (!parse_modifier(mod_str, &mod)) {
+        fprintf(stderr, "Invalid modifier '%s'\n", mod_str);
+        exit(1);
+    }
+    if (!set_pedal_type(KEY_TYPE)) {
+        fprintf(stderr, "Invalid combination of options\n");
+        usage();
+    }
+    curr_pedal->data[2] |= mod;
+}
+
+void compile_mouse_button(const char *btn_str) {
+    enum mouse_button btn;
+
+    if (!parse_mouse_button(btn_str, &btn)) {
+        fprintf(stderr, "Invalid mouse button '%s'\n", btn_str);
+        exit(1);
+    }
+    if (!set_pedal_type(MOUSE_TYPE)) {
+        fprintf(stderr, "Invalid combination of options\n");
