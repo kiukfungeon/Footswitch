@@ -6,6 +6,3 @@ class Footswitch < Formula
 
   depends_on "hidapi"
   depends_on "pkg-config"
-
-  def install
-    system "mkdir", "#{prefix}/bin"
