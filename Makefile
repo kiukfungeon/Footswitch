@@ -30,3 +30,35 @@ else
 	else
 		LDLIBS	:= -lhidapi
 	endif
+endif
+
+all: $(OBJDIR) $(TARGETS)
+
+$(OBJDIR):
+	mkdir $@
+
+$(OBJDIR)/%.o: $(SRCDIR)/%.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+$(TARGETS): %: $(patsubst %.c, $(OBJDIR)/%.o, $(COMMONSRC)) $(OBJDIR)/%.o
+	$(CC) $(CFLAGS) -o $@ $^ $(LDLIBS)
+
+install: all
+	$(INSTALL) -d $(DESTDIR)$(PREFIX)/bin
+	for target in $(TARGETS); do \
+		$(INSTALL) "$$target" $(DESTDIR)$(PREFIX)/bin; \
+	done
+ifeq ($(UNAME), Linux)
+	$(INSTALL) -d $(DESTDIR)$(UDEVPREFIX)/rules.d
+	$(INSTALLDATA) 19-footswitch.rules $(DESTDIR)$(UDEVPREFIX)/rules.d
+endif
+
+uninstall:
+	rm -f $(addprefix $(DESTDIR)$(PREFIX)/bin/, $(TARGETS))
+ifeq ($(UNAME), Linux)
+	rm -f $(DESTDIR)$(UDEVPREFIX)/rules.d/19-footswitch.rules
+endif
+
+clean:
+	rm -rf $(TARGETS) $(OBJDIR)
+
