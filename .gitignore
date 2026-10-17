@@ -1,2 +1,11 @@
 *.swp
 # binaries
+scythe
+scythe2
+footswitch
+obj*/
+*-build-deps_*
+debian/files
+debian/footswitch/
+debian/footswitch.substvars
+debian/*debhelper*
