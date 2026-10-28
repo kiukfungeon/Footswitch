@@ -46,3 +46,6 @@ jobs:
         brew install hidapi
     - name: Build
       run: make
+
+permissions:
+  contents: read
